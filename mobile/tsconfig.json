@@ -1,0 +1,3 @@
+{ "extends": "expo/tsconfig.base",
+  "compilerOptions": { "strict": true, "baseUrl": ".", "paths": { "@itzbot/shared": ["../shared/src/index.ts"] } },
+  "include": ["**/*.ts", "**/*.tsx", "../shared/src/**/*.ts"] }

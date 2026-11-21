@@ -1,0 +1,13 @@
+{
+  "name": "itzbot-manager",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["shared", "worker", "backend"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:backend": "npm run dev -w backend"
+  }
+}

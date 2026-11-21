@@ -1,0 +1,4 @@
+{ "name": "@itzbot/worker", "version": "1.0.0", "main": "dist/index.js", "types": "dist/index.d.ts",
+  "scripts": { "build": "tsc -b", "typecheck": "tsc -b", "test": "vitest run" },
+  "dependencies": { "dockerode": "^4.0.2" },
+  "devDependencies": { "@types/dockerode": "^3.3.31", "@types/node": "^20.14.0", "typescript": "^5.5.0", "vitest": "^2.0.0" } }

@@ -1,0 +1,87 @@
+# ItzBot Manager: production stack for a Linux VPS.  Usage: see docs/DEPLOYMENT.md
+name: itzbot
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: itzbot
+      POSTGRES_DB: itzbot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U itzbot"]
+      interval: 10s
+      retries: 10
+    networks: [internal]
+
+  # The Docker socket is NEVER given to the backend or published. This filter proxy only exposes the API sections we need,
+  # and is reachable only on the private "internal" network.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.2.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      INFO: 1
+      VERSION: 1
+      POST: 1
+      DELETE: 1
+      EXEC: 0
+      VOLUMES: 0
+      SERVICES: 0
+      SWARM: 0
+      SECRETS: 0
+      BUILD: 0
+      AUTH: 0
+      SYSTEM: 0
+    volumes: ["/var/run/docker.sock:/var/run/docker.sock:ro"]
+    networks: [internal]
+
+  backend:
+    build: { context: ., dockerfile: docker/Dockerfile.backend }
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      docker-proxy: { condition: service_started }
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://itzbot:${POSTGRES_PASSWORD}@postgres:5432/itzbot
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      MASTER_KEY: ${MASTER_KEY:?set MASTER_KEY in .env}
+      DATA_DIR: /data
+      HOST_DATA_DIR: ${HOST_DATA_DIR:?set HOST_DATA_DIR in .env}
+      DOCKER_HOST_ADDR: docker-proxy
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
+      DEFAULT_BOT_MEMORY_MB: ${DEFAULT_BOT_MEMORY_MB:-256}
+      DEFAULT_BOT_CPUS: ${DEFAULT_BOT_CPUS:-0.5}
+    volumes:
+      # Must be the same absolute path on host and in container (bot containers bind-mount subfolders of it).
+      - ${HOST_DATA_DIR}:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [internal]
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [backend]
+    environment: { SITE_ADDRESS: "${SITE_ADDRESS:-:80}" }
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal, public]
+
+volumes: { pgdata: {}, caddy_data: {}, caddy_config: {} }
+networks:
+  internal: { internal: false }
+  public: {}

@@ -1,0 +1,8 @@
+{
+  "cli": { "version": ">= 12.0.0", "appVersionSource": "local" },
+  "build": {
+    "preview": { "distribution": "internal", "android": { "buildType": "apk" } },
+    "preview-insecure": { "distribution": "internal", "android": { "buildType": "apk" }, "env": { "ALLOW_CLEARTEXT": "1" } },
+    "production": { "android": { "buildType": "apk" } }
+  }
+}

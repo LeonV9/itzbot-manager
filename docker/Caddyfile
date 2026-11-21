@@ -1,0 +1,5 @@
+# Automatic HTTPS (Let's Encrypt) for the domain in SITE_ADDRESS. The backend itself is never published.
+{$SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy backend:8080
+}

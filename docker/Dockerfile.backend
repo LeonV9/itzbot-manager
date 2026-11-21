@@ -1,0 +1,28 @@
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json* tsconfig.base.json ./
+COPY shared/package.json shared/
+COPY worker/package.json worker/
+COPY backend/package.json backend/
+RUN npm install --workspace=shared --workspace=worker --workspace=backend --include-workspace-root
+COPY shared shared
+COPY worker worker
+COPY backend backend
+RUN npm run build
+
+FROM node:20-alpine
+ENV NODE_ENV=production
+WORKDIR /app
+COPY package.json package-lock.json* ./
+COPY shared/package.json shared/
+COPY worker/package.json worker/
+COPY backend/package.json backend/
+RUN npm install --omit=dev --workspace=shared --workspace=worker --workspace=backend --include-workspace-root && npm cache clean --force
+COPY --from=build /app/shared/dist shared/dist
+COPY --from=build /app/worker/dist worker/dist
+COPY --from=build /app/backend/dist backend/dist
+COPY backend/migrations backend/migrations
+USER node
+WORKDIR /app/backend
+EXPOSE 8080
+CMD ["node", "dist/server.js"]
